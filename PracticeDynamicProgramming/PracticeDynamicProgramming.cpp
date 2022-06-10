@@ -1,6 +1,7 @@
 // PracticeDynamicProgramming.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 #include "PracticeDynamicProgramming.h"
+#include "LeetCodeUtil.h"
 
 #include <iostream>
 #include <vector>
@@ -14,89 +15,40 @@ using namespace DynamicProgramming;
 //---------------------------------------------------------------------------------------
 int numDecodings(string s)
 {
-    // --------------
-    // 6: (6)
-    // 86: (8 6)
-    // --------------
-    // 7: (7)
-    // 27: (2 7)
-    // --------------
-    // 6 : (6)
-    // 26 : (26) (2 6)
-    // 226:  (2 2 6) (22 6) (2 26)
-    // This is similar with: f(n) = f(n - 1) + f(n - 2)
-    // --------------
-    // 826: (8 26) (8 2 6)
-    // --------------
-    // 0 : put 0
-    // 10 : (10)  put 1
-    // 310: (3 10)
-    // --------------
-    // 6: (6)
-    // 06: put 0
-    // 206: (20 6)
-    // --------------
-    // 26: (26) (2 6)
-    // 026 : put 0
-    // 1026: (10 26) (10 2 6)
-    // --------------
-    // 9: (9)
-    // 89: (8 9)
-    // 289: (2 8 9)
-    // --------------
-    // dp[i] = dp[i + 1] + dp[i + 2] if 1 < s[i] <=2
-    //       = dp[i + 1] if s[i] > 2
-    //       = 0 if s[i] = 0
-    //
+    // 1  = {[1]}
+    // 11 = {[1] [1]} [11]}
+    // 31 = {[3] [1]}
+    //  ^
+    // Define dp[i] : the number of decode ways of the string from s[0] ~ s[i].
+    // 331
+    //   ^
+    // dp[i] = dp[i-1]. If s[i] != 0, s[i - 1] and s[i] cannot form 10 ~ 26.
+    // 321
+    //   ^
+    // dp[i] = dp[i-1] + dp[i-2]. If s[i] != 0, s[i - 1] and s[i] can form 10 ~ 26.
+    // 130
+    //   ^
+    // dp[i] = 0 if s[i] == 0, and s[i - 1] and s[i] cannot form 10 ~ 26.
+    // 310
+    //   ^
+    // dp[i] = dp[i-2]. If s[i] == 0, s[i - 1] and s[i] can form 10 ~ 26.
+    if (s.empty() || s[0] == '0') return 0;
 
-    const int len = s.size();
+    vector<int> dp(s.size() + 1);
+    dp[0] = 1; // To facilitate the case 11. dp[2] = dp[1] + dp[0].
 
-    if (len == 0)
+    for (int i = 1; i <= s.size(); ++i)
     {
-        return 0;
-    }
-    else if (len == 1)
-    {
-        return s[0] == '0' ? 0 : 1;
-    }
-
-    vector<int> dp(len, 0);
-
-    if (s[len - 1] == '0' && s[len - 2] != '0')
-    {
-        dp[len - 1] = 0;
-        dp[len - 2] = s[len - 2] > '2' ? 0 : 1;
-    }
-    else if(s[len-2] == '0' && s[len - 1] != '0')
-    {
-        dp[len - 1] = 1;
-        dp[len - 2] = 0;
-    }
-    else if(s[len - 1] != '0' && s[len - 2] != '0')
-    {
-        dp[len - 1] = 1;
-        // If the number of two digits is greater than 26, then it is 1, otherwise 2.
-        dp[len - 2] = s[len - 2] > '2' || ( s[len - 2] == '2' && s[len - 1] > '6' ) ? 1 : 2;
-    }
-
-    for (int i = len - 3; i >= 0; --i)
-    {
-        // If number of the last digits is not greater than 26
-        if (s[i] == '0')
+        // Note that s is 0-indexed.
+        dp[i] = s[i - 1] == '0' ? 0 : dp[i - 1];
+        if (i > 1 && ( s[i - 2] == '1' || ( s[i - 2] == '2' && s[i - 1] <= '6' ) ))
         {
-            dp[i] = 0;
-        }
-        else if (s[i] <= '2' && ( s[i] < '2' || s[i + 1] < '7' )  )
-        {
-            dp[i] = dp[i + 1] + dp[i + 2];
-        }
-        else
-        {
-            dp[i] = dp[i + 1];
+            // If s[i-1] and s[i-2] can form 10~26.
+            dp[i] += dp[i - 2];
         }
     }
 
-    return dp[0];
+    return dp.back();
 }
 
 //---------------------------------------------------------------------------------------
@@ -182,7 +134,7 @@ public:
 };
 
 //---------------------------------------------------------------------------------------
-// 152. Maximum Product Subarray
+// 152. Maximum Product Subarray (Medium)
 //---------------------------------------------------------------------------------------
 int maxProduct(vector<int>& nums)
 {
@@ -221,6 +173,140 @@ int maxProduct(vector<int>& nums)
     return result;
 }
 
+//---------------------------------------------------------------------------------------
+// 140. Word Break II (Hard)
+//---------------------------------------------------------------------------------------
+// Build a trie (prefix tree) for those words.
+// In a recursion function, scan letter on the input string, use trie to detect whether we get a word.
+// If yes, insert that word into the wordPieces vector. Call recursion function on the remaining string
+// (from i + 1 to the end).
+// When the recursion function returns, pop back that word we just put, so that we can move on to process
+// the next possible sentence.
+// In the beginning of the recursion function, we check the starting index. If it reaches the end, it means
+// we've scanned all letters. We got all word pieces for a sentence. So, put this vector into the
+// sentence's vector (vector<vector<string>>).
+class Solution140
+{
+public:
+
+    // Trie, aka prefix tree.
+    class TrieNode
+    {
+    public:
+        inline TrieNode* getChild(char c)
+        {
+            return m_children[c - 'a'];
+        }
+
+        void createChild(char c)
+        {
+            m_children[c - 'a'] = new TrieNode();
+        }
+
+        void setIsWord(bool val, const string& s)
+        {
+            m_isWord = val;
+            m_word = s;
+        }
+
+        bool isWord() const
+        {
+            return m_isWord;
+        }
+
+        string getWord() const
+        {
+            return m_word;
+        }
+
+    private:
+        vector<TrieNode*> m_children{ 26, nullptr };
+        bool m_isWord = false;
+        string m_word;
+    };
+
+    vector<string> wordBreak(string s, vector<string>& wordDict)
+    {
+        m_trieRoot = new TrieNode;
+        BuildTrie(wordDict);
+
+        vector<vector<string>> setnVector;
+        vector<string> wordPieces;
+        vector<string> result;
+
+        helper(s, 0, wordPieces, setnVector);
+
+        for (const auto& setnV : setnVector)
+        {
+            string setn;
+            for (int i = 0; i < setnV.size(); ++i)
+            {
+                setn += setnV[i];
+                if (i != setnV.size() - 1)
+                {
+                    setn += " ";
+                }
+            }
+            result.push_back(setn);
+        }
+
+        return result;
+    }
+
+private:
+
+    void helper(const string& s, int start, vector<string>& wordPieces, vector<vector<string>>& setnVector)
+    {
+        if (start == s.size())
+        {
+            setnVector.push_back(wordPieces);
+            return;
+        }
+
+        TrieNode* currNode = m_trieRoot;
+        for (int i = start; i < s.size(); i++)
+        {
+            currNode = currNode->getChild(s[i]);
+            if (!currNode)
+            {
+                break;
+            }
+            // catsanddog
+            //   ^^
+            if (currNode->isWord())
+            {
+                wordPieces.push_back(currNode->getWord());
+                helper(s, i + 1, wordPieces, setnVector);
+                // This is very important!
+                // If we don't do so, the next possible sentence will be appended to the 1st sentence.
+                // For example, when we get 'cats', we're going to insert 'cats'.
+                // At the time, the wordPieces must be empty. The 'cat', 'sand', 'dog' must be popped.
+                wordPieces.pop_back();
+            }
+        }
+    }
+
+    void BuildTrie(vector<string>& wordDict)
+    {
+        for (const auto& word : wordDict)
+        {
+            TrieNode* cur = m_trieRoot;
+            for (int i = 0; i < word.size(); ++i)
+            {
+                if (!cur->getChild(word[i]))
+                {
+                    cur->createChild(word[i]);
+                }
+                cur = cur->getChild(word[i]);
+            }
+            cur->setIsWord(true, word);
+        }
+    }
+
+    TrieNode* m_trieRoot = nullptr;
+};
+
+
 int main()
 {
     cout << "Practice of dynamic programming!\n";
@@ -231,8 +317,8 @@ int main()
     // Input: s = "226"
     // Output: 3
     // Explanation : "226" could be decoded as "BZ" ( 2 26 ), "VF" ( 22 6 ), or "BBF" ( 2 2 6 ).
-    // Input: 227 2839 1201234
-    cout << "\n91. Decode Ways: " << numDecodings("1201234") << endl;
+    // Input: 227(2) 2839(1) 1201234(3)
+    cout << "\n91. Decode Ways: " << numDecodings("227") << endl;
 
     // 139. Word Break (Medium)
     // Input: s = "applepenapple", wordDict = ["apple","pen"]
@@ -252,4 +338,17 @@ int main()
     // Output: 6
     vector<int> inputVI = { 2,3,-2,4 };
     cout << "\n152. Maximum Product Subarray: " << maxProduct(inputVI) << endl;
+
+    // 140. Word Break II (Hard)
+    // Input: s = "catsanddog", wordDict = ["cat","cats","and","sand","dog"]
+    // Output: ["cats and dog", "cat sand dog"]
+    // Input: s = "pineapplepenapple", wordDict = ["apple","pen","applepen","pine","pineapple"]
+    // Output: ["pine apple pen apple","pineapple pen apple","pine applepen apple"]
+    inputStr = "pineapplepenapple";
+    inputVS = { "apple","pen","applepen","pine","pineapple" };
+    Solution140 sol140;
+    auto resultVS = sol140.wordBreak(inputStr, inputVS);
+    cout << "\n140. Word Break II (Hard) " << "for " << inputStr << " :" << endl;
+    LeetCodeUtil::PrintVector(resultVS);
+
 }
