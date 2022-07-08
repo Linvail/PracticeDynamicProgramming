@@ -306,6 +306,54 @@ private:
     TrieNode* m_trieRoot = nullptr;
 };
 
+//---------------------------------------------------------------------------------------
+// 188. Best Time to Buy and Sell Stock IV (Hard)
+// Asked by Amazon, Nvidia
+//---------------------------------------------------------------------------------------
+class Solution188
+{
+public:
+    int maxProfit(int k, const vector<int>& prices)
+    {
+        // dp[i][k] = dp[i-1][k] is prices[i] is not selected.
+        // dp[i][k] = dp[p-1][k-1] + prices[i] - prices[p] if i is selected for
+        // sell and choose p is selected for buy. 0 < p < i. We need iterate over p.
+        // Combine:
+        // dp[i][k] = max(dp[i-1][k], max( dp[p-1][k-1] + prices[i] - prices[p] ) )
+        // within all p.
+        //
+        // Since p is less than i. We should be able know dp[p-1][k-1] when calculating
+        // dp[i][k].
+
+        const size_t len = prices.size();
+
+        if (len == 0 || k == 0)
+        {
+            return 0;
+        }
+
+        vector<vector<int>> dp(len, vector<int>(k + 1, 0));
+
+        for (size_t ki = 1; ki <= k; ki++)
+        {
+            // Consider dp[p-1][k-1] + prices[i] - prices[p]
+            // Pull out prices[p]. It becomes: dp[p-1][k-1] - prices[p] + prices[i]
+            // We need the max value, so we use a variable, preMax, to track the max value
+            // of "dp[p-1][k-1] - prices[p]".
+            // The initial value is tricky. Look the 1st line of loop content, we will
+            // add preMax and prices[i]. We start i = 1, in this position, we cannot even
+            // make a trade, so the sum should be 0. So the initial value should be -prices[0].
+            int preMax = -prices[0];
+            for (size_t i = 1; i < prices.size(); ++i)
+            {
+                dp[i][ki] = max(dp[i - 1][ki], preMax + prices[i]);
+                preMax = max(preMax, dp[i - 1][ki - 1] - prices[i]);
+            }
+        }
+
+        return dp[len - 1][k];
+    }
+};
 
 int main()
 {
@@ -333,7 +381,7 @@ int main()
     cout << "\n139. Word Break: " << sol139.wordBreak(inputStr, inputVS);
     cout << endl;
 
-    // 152. Maximum Product Subarray
+    // 152. Maximum Product Subarray (Medium)
     // Input: nums = [2,3,-2,4]
     // Output: 6
     vector<int> inputVI = { 2,3,-2,4 };
@@ -350,5 +398,11 @@ int main()
     auto resultVS = sol140.wordBreak(inputStr, inputVS);
     cout << "\n140. Word Break II (Hard) " << "for " << inputStr << " :" << endl;
     LeetCodeUtil::PrintVector(resultVS);
+
+    // 188. Best Time to Buy and Sell Stock IV (Hard)
+    Solution188 sol188;
+    // Input: k = 2, prices = [3,2,6,5,0,3]
+    // Output: 7
+    cout << "\n188. Best Time to Buy and Sell Stock IV: " << sol188.maxProfit(2, { 3,2,6,5,0,3 }) << endl;
 
 }
